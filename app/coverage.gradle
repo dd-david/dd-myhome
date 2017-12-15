@@ -1,0 +1,67 @@
+apply plugin: "jacoco"
+
+jacoco {
+    // see https://github.com/jacoco/jacoco/pull/288 and the top build.gradle
+    toolVersion "0.7.6.201602180812"
+}
+
+android {
+    testOptions {
+        unitTests.all {
+            systemProperty "robolectric.logging.enabled", true
+            systemProperty "robolectric.logging", "stdout"
+
+            jacoco {
+                includeNoLocationClasses = true
+            }
+        }
+    }
+}
+
+task copyKotlinClasses(type: Copy) {
+    from "build/tmp/kotlin-classes/debugUnitTest"
+    into "build/intermediates/classes/debug"
+}
+
+task coverageReport(type: JacocoReport, dependsOn: ["testDebugUnitTest"]) {
+    group = "Reports"
+    description = "Generate a Jacoco coverage report"
+
+    def coverageSourceDirs = ['src/main/java']
+    def ignoredPrefixes = ['R$', 'R.class', 'BuildConfig.class']
+
+    classDirectories = fileTree(
+        dir: "${project.buildDir}/intermediates/classes/debug",
+        // dir: "${project.buildDir}/tmp/kotlin-classes/debugUnitTest",
+        exclude: { d -> ignoredPrefixes.any { p -> d.file.name.startsWith(p) } }
+    )
+    sourceDirectories = files(coverageSourceDirs)
+    executionData = files("${project.buildDir}/jacoco/testDebugUnitTest.exec")
+
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+}
+
+task coverage(dependsOn: 'coverageReport') << {
+    def reports = new File(project.buildDir, '/reports/jacoco/coverageReport/html')
+    def index = new File(reports, 'index.html').getText('UTF-8')
+    def footer = '<div class="footer">'
+    def result = new StringBuilder(index.substring(0, index.indexOf(footer)))
+
+    reports.eachDirMatch({ !new File(it).name.startsWith(".") }) { dir ->
+        def moduleIndex = new File(dir, 'index.source.html')
+        def content = moduleIndex.getText('UTF-8')
+                .replaceAll('\\.\\./\\.resources', '.resources')
+                .replaceAll('href="', "href=\"${dir.name}/")
+        result.append(content.substring(content.indexOf('<h1>'), content.indexOf(footer)))
+    }
+    result.append(index.substring(index.indexOf(footer)))
+
+    def output = new File(reports, 'index.source.html')
+
+    output.delete()
+    output << result.toString()
+    println("open $output.path")
+}
