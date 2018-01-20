@@ -1,29 +1,32 @@
 language: android
-
-jdk:
-  - oraclejdk8
-
-install:
-  - echo yes | sdkmanager "tools" &>/dev/null
-  - echo yes | sdkmanager "platform-tools" &>/dev/null
-  - echo yes | sdkmanager "build-tools;26.0.2" &>/dev/null
-  - echo yes | sdkmanager "platforms;android-26" &>/dev/null
-
-script:
-  - ./gradlew clean testDebug lintDebug jacocoDebugReport coveralls -Dscan --stacktrace
-
-branches:
-  except:
-    - gh-pages
-
 sudo: false
+jdk: oraclejdk7
+env:
+  matrix:
+    - ANDROID_TARGET=android-18 ANDROID_ABI=armeabi-v7a
+  global:
+    # wait up to 10 minutes for adb to connect to emulator
+    - ADB_INSTALL_TIMEOUT=10
 
-before_cache:
-  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
-  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+android:
+  components:
+  - platform-tools
+  - tools
+  - build-tools-23.0.2
+  - android-23
+
+  # Additional components
+  - extra-google-m2repository
+  - extra-android-m2repository
+  - extra-android-support
+
+  # Emulator for the tests
+  - sys-img-armeabi-v7a-android-18
 
 cache:
   directories:
-    - $HOME/.gradle/caches/
-    - $HOME/.gradle/wrapper/
-    - $HOME/.android/build-cache
+    - $HOME/.gradle/caches/2.8
+    - $HOME/.gradle/caches/jars-1
+    - $HOME/.gradle/daemon
+    - $HOME/.gradle/native
+    - $HOME/.gradle/wrapper
